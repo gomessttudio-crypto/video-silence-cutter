@@ -4,6 +4,7 @@ import type { CutSegment, OutputFormat, SilenceSegment } from './types'
 
 // Aponta o binário do ffmpeg-static
 Ffmpeg.setFfmpegPath(ffmpegStatic as string)
+console.log('[ffmpeg] setFfmpegPath:', ffmpegStatic)
 
 /**
  * Inverte os segmentos de silêncio para obter os segmentos a MANTER.
@@ -47,6 +48,11 @@ export async function applyJumpCuts(
   onProgress: (percent: number) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    console.log('[ffmpeg-cut] iniciando', { inputPath, outputPath, segments: segments.length })
+
+    // Timeout de segurança: 10 minutos
+    let cutTimeout: ReturnType<typeof setTimeout>
+
     // Caso especial: sem cortes → copia diretamente
     const isFullVideo =
       segments.length === 1 &&
@@ -81,18 +87,29 @@ export async function applyJumpCuts(
       cmd = cmd.outputOptions(outputOpts)
     }
 
+    cutTimeout = setTimeout(() => {
+      console.error('[ffmpeg-cut] timeout de 10 minutos — matando processo')
+      cmd.kill('SIGKILL')
+      reject(new Error('Timeout: o corte demorou mais de 10 minutos'))
+    }, 10 * 60 * 1000)
+
     cmd
       .output(outputPath)
+      .on('stderr', (line: string) => console.log('[ffmpeg-cut stderr]', line))
       .on('progress', (info) => {
         if (info.percent != null) {
           onProgress(Math.min(Math.round(info.percent), 99))
         }
       })
       .on('end', () => {
+        clearTimeout(cutTimeout)
+        console.log('[ffmpeg-cut] concluído')
         onProgress(100)
         resolve()
       })
       .on('error', (err: Error) => {
+        clearTimeout(cutTimeout)
+        console.error('[ffmpeg-cut] erro:', err)
         reject(err)
       })
       .run()
