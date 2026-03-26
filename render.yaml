@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: video-silence-cutter
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MAX_FILE_SIZE_MB
+        value: 500
+      - key: MAX_DURATION_SECONDS
+        value: 300
