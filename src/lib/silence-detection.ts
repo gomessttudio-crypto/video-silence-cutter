@@ -16,6 +16,7 @@ export async function detectSilencesRaw(
 ): Promise<{ silences: SilenceSegment[]; totalDuration: number }> {
   return new Promise((resolve, reject) => {
     const ffmpegPath = ffmpegStatic as string
+    console.log('[ffmpeg] binary path:', ffmpegPath)
     const args = [
       '-hide_banner',
       '-vn',
@@ -66,7 +67,10 @@ export async function detectSilencesRaw(
       resolve({ silences, totalDuration })
     })
 
-    proc.on('error', reject)
+    proc.on('error', (err) => {
+      console.error('[ffmpeg] spawn error:', err)
+      reject(err)
+    })
   })
 }
 

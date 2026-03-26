@@ -24,6 +24,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const encoder = new TextEncoder()
   let intervalId: ReturnType<typeof setInterval>
+  let heartbeatId: ReturnType<typeof setInterval>
 
   const stream = new ReadableStream({
     start(controller) {
@@ -31,6 +32,11 @@ export async function GET(req: NextRequest): Promise<Response> {
         const payload = `data: ${JSON.stringify(data)}\n\n`
         controller.enqueue(encoder.encode(payload))
       }
+
+      // Heartbeat a cada 15s para manter conexão viva no nginx/Render
+      heartbeatId = setInterval(() => {
+        try { controller.enqueue(encoder.encode(': heartbeat\n\n')) } catch {}
+      }, 15000)
 
       intervalId = setInterval(() => {
         const currentJob = getJob(jobId)
@@ -70,6 +76,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     },
     cancel() {
       clearInterval(intervalId)
+      clearInterval(heartbeatId)
     },
   })
 
@@ -77,7 +84,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   })
 }
