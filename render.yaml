@@ -8,6 +8,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: MAX_FILE_SIZE_MB
-        value: 500
+        value: 2048
       - key: MAX_DURATION_SECONDS
-        value: 300
+        value: 600

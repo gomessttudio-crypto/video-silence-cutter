@@ -10,8 +10,8 @@ import type { DetectionOptions, OutputFormat } from '@/lib/types'
 
 export const runtime = 'nodejs'
 
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB ?? '500') * 1024 * 1024
-const MAX_DURATION = parseInt(process.env.MAX_DURATION_SECONDS ?? '300')
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB ?? '2048') * 1024 * 1024
+const MAX_DURATION = parseInt(process.env.MAX_DURATION_SECONDS ?? '600')
 const ALLOWED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       stream.on('data', (chunk: Buffer) => {
         bytesReceived += chunk.length
         if (bytesReceived > MAX_FILE_SIZE) {
-          fileError = 'Arquivo muito grande. Máximo: 500MB.'
+          fileError = `Arquivo muito grande. Máximo: ${process.env.MAX_FILE_SIZE_MB ?? '2048'}MB.`
           stream.destroy()
           writeStream.destroy()
           try { fs.unlinkSync(inputPath) } catch {}

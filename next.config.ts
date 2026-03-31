@@ -3,7 +3,7 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '500mb',
+      bodySizeLimit: '2048mb',
     },
   },
   serverExternalPackages: ['ffmpeg-static', 'fluent-ffmpeg', 'busboy'],

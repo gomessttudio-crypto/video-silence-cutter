@@ -12,7 +12,7 @@ interface UploadAreaProps {
   disabled?: boolean
 }
 
-const MAX_SIZE = 500 * 1024 * 1024 // 500MB
+const MAX_SIZE = 2048 * 1024 * 1024 // 2GB
 const ACCEPTED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 
 export default function UploadArea({ onJobStart, onFileSelected, options, disabled }: UploadAreaProps) {
@@ -74,7 +74,7 @@ export default function UploadArea({ onJobStart, onFileSelected, options, disabl
     if (rejected.length > 0) {
       const err = rejected[0].errors[0]
       if (err.code === 'file-too-large') {
-        setError('Arquivo muito grande. Máximo: 500MB.')
+        setError('Arquivo muito grande. Máximo: 2GB.')
       } else if (err.code === 'file-invalid-type') {
         setError('Formato não suportado. Use MP4, MOV ou WebM.')
       } else {
@@ -131,7 +131,7 @@ export default function UploadArea({ onJobStart, onFileSelected, options, disabl
               <p className="text-gray-300 font-medium">
                 Arraste seu vídeo ou <span className="text-blue-400">clique para selecionar</span>
               </p>
-              <p className="text-xs text-gray-500">MP4, MOV ou WebM · até 500MB · máx. 5 minutos</p>
+              <p className="text-xs text-gray-500">MP4, MOV ou WebM · até 2GB · máx. 10 minutos</p>
             </>
           )}
         </div>
