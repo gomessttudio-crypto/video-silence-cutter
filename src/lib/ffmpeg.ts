@@ -67,8 +67,8 @@ export async function applyJumpCuts(
         .map((s) => `between(t,${s.start.toFixed(4)},${s.end.toFixed(4)})`)
         .join('+')
 
-      // Scale para máx 720p para reduzir carga de CPU no encoding
-      const videoFilter = `select='${selectFilter}',setpts=N/FRAME_RATE/TB,scale='if(gt(iw,ih),min(1280\\,iw),-2)':'if(gt(iw,ih),-2,min(1280\\,ih))'`
+      // Scale ANTES do select para reduzir tamanho dos frames no pipeline (menos RAM)
+      const videoFilter = `scale='if(gt(iw\\,ih),min(854\\,iw),-2)':'if(gt(iw\\,ih),-2,min(854\\,ih))',select='${selectFilter}',setpts=N/FRAME_RATE/TB`
       const audioFilter = `aselect='${selectFilter}',asetpts=N/SR/TB`
 
       const outputOpts = [
@@ -76,7 +76,8 @@ export async function applyJumpCuts(
         '-af', audioFilter,
         '-c:v', 'libx264',
         '-crf', '26',
-        '-preset', 'ultrafast',  // muito mais leve no CPU
+        '-preset', 'ultrafast',
+        '-threads', '1',
         '-c:a', 'aac',
         '-b:a', '128k',
       ]
