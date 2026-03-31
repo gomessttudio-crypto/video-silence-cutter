@@ -68,7 +68,7 @@ export async function applyJumpCuts(
         .join('+')
 
       // Scale ANTES do select para reduzir tamanho dos frames no pipeline (menos RAM)
-      const videoFilter = `scale='if(gt(iw\\,ih),min(854\\,iw),-2)':'if(gt(iw\\,ih),-2,min(854\\,ih))',select='${selectFilter}',setpts=N/FRAME_RATE/TB`
+      const videoFilter = `scale='if(gt(iw,ih),min(854\\,iw),-2)':'if(gt(iw,ih),-2,min(854\\,ih))',select='${selectFilter}',setpts=N/FRAME_RATE/TB`
       const audioFilter = `aselect='${selectFilter}',asetpts=N/SR/TB`
 
       const outputOpts = [
