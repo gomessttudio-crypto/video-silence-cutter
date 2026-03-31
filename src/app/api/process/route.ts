@@ -5,13 +5,12 @@ import os from 'os'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { createJob, updateJob } from '@/lib/job-store'
-import { detectSilences } from '@/lib/silence-detection'
+import { runJob } from '@/lib/run-job'
 import type { DetectionOptions, OutputFormat } from '@/lib/types'
 
 export const runtime = 'nodejs'
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB ?? '2048') * 1024 * 1024
-const MAX_DURATION = parseInt(process.env.MAX_DURATION_SECONDS ?? '600')
 const ALLOWED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -115,33 +114,3 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   })
 }
 
-async function runJob(
-  jobId: string,
-  inputPath: string,
-  options: DetectionOptions,
-): Promise<void> {
-  try {
-    updateJob(jobId, { status: 'detecting', progress: 5 })
-
-    const { silences, rawSilences, totalDuration } = await detectSilences(inputPath, options)
-
-    if (totalDuration > MAX_DURATION) {
-      updateJob(jobId, {
-        status: 'error',
-        error: `Vídeo muito longo. Máximo: ${MAX_DURATION / 60} minutos.`,
-      })
-      return
-    }
-
-    updateJob(jobId, {
-      status: 'detected',
-      progress: 100,
-      silences,
-      rawSilences,
-      totalDuration,
-    })
-  } catch (err) {
-    console.error('[runJob] erro:', err)
-    updateJob(jobId, { status: 'error', error: String(err) })
-  }
-}

@@ -19,55 +19,57 @@ export default function UploadArea({ onJobStart, onFileSelected, options, disabl
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const uploadFile = useCallback((file: File) => {
+  const uploadFile = useCallback(async (file: File) => {
     setError(null)
     setUploadProgress(0)
 
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('threshold', String(options.detection.threshold))
-    formData.append('minDuration', String(options.detection.minDuration))
-    formData.append('paddingLeft', String(options.detection.paddingLeft))
-    formData.append('paddingRight', String(options.detection.paddingRight))
-    formData.append('removeShortSpikes', String(options.detection.removeShortSpikes))
-    formData.append('format', options.format)
+    const CHUNK_SIZE = 10 * 1024 * 1024 // 10MB por chunk
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+    let jobId = ''
 
-    const xhr = new XMLHttpRequest()
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE
+      const end = Math.min(start + CHUNK_SIZE, file.size)
+      const chunk = file.slice(start, end)
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        setUploadProgress(Math.round((e.loaded / e.total) * 100))
-      }
-    }
+      const formData = new FormData()
+      formData.append('jobId', jobId)
+      formData.append('chunkIndex', String(i))
+      formData.append('totalChunks', String(totalChunks))
+      formData.append('mimeType', file.type)
+      formData.append('threshold', String(options.detection.threshold))
+      formData.append('minDuration', String(options.detection.minDuration))
+      formData.append('paddingLeft', String(options.detection.paddingLeft))
+      formData.append('paddingRight', String(options.detection.paddingRight))
+      formData.append('removeShortSpikes', String(options.detection.removeShortSpikes))
+      formData.append('format', options.format)
+      formData.append('chunk', chunk)
 
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        try {
-          const json = JSON.parse(xhr.responseText)
-          setUploadProgress(null)
-          onJobStart(json.jobId)
-        } catch {
-          setError('Resposta inválida do servidor.')
-          setUploadProgress(null)
-        }
-      } else {
-        try {
-          const json = JSON.parse(xhr.responseText)
+      try {
+        const res = await fetch('/api/upload-chunk', { method: 'POST', body: formData })
+
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
           setError(json.error ?? 'Erro ao enviar arquivo.')
-        } catch {
-          setError('Erro ao enviar arquivo.')
+          setUploadProgress(null)
+          return
         }
+
+        const json = await res.json()
+        if (i === 0) jobId = json.jobId
+        setUploadProgress(Math.round((i + 1) / totalChunks * 100))
+
+        if (json.done) {
+          setUploadProgress(null)
+          onJobStart(jobId)
+          return
+        }
+      } catch {
+        setError('Erro de conexão. Verifique sua internet.')
         setUploadProgress(null)
+        return
       }
     }
-
-    xhr.onerror = () => {
-      setError('Erro de conexão. Verifique sua internet.')
-      setUploadProgress(null)
-    }
-
-    xhr.open('POST', '/api/process')
-    xhr.send(formData)
   }, [options, onJobStart])
 
   const onDrop = useCallback((accepted: File[], rejected: FileRejection[]) => {
@@ -84,7 +86,7 @@ export default function UploadArea({ onJobStart, onFileSelected, options, disabl
     }
     if (accepted.length > 0) {
       if (onFileSelected) onFileSelected(URL.createObjectURL(accepted[0]), accepted[0])
-      uploadFile(accepted[0])
+      void uploadFile(accepted[0])
     }
   }, [uploadFile])
 
