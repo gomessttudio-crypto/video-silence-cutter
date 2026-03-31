@@ -1,4 +1,6 @@
 import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import type { Job, OutputFormat } from './types'
 
@@ -47,11 +49,11 @@ export function deleteJob(id: string): void {
   jobs.delete(id)
 }
 
-/** Deleta jobs criados há mais de 1h e remove seus arquivos temporários */
+/** Deleta jobs criados há mais de 30min e remove seus arquivos temporários */
 export function cleanupOldJobs(): void {
-  const oneHourAgo = Date.now() - 60 * 60 * 1000
+  const thirtyMinAgo = Date.now() - 30 * 60 * 1000
   for (const [id, job] of Array.from(jobs.entries())) {
-    if (job.createdAt < oneHourAgo) {
+    if (job.createdAt < thirtyMinAgo) {
       try { fs.unlinkSync(job.inputPath) } catch {}
       try { fs.unlinkSync(job.outputPath) } catch {}
       jobs.delete(id)
@@ -59,9 +61,22 @@ export function cleanupOldJobs(): void {
   }
 }
 
+/** Deleta arquivos vsc-* órfãos em /tmp de crashes anteriores */
+function cleanupOrphanedTmpFiles(): void {
+  try {
+    const tmpDir = os.tmpdir()
+    for (const file of fs.readdirSync(tmpDir)) {
+      if (file.startsWith('vsc-')) {
+        try { fs.unlinkSync(path.join(tmpDir, file)) } catch {}
+      }
+    }
+  } catch {}
+}
+
 // Guard para rodar cleanup apenas uma vez mesmo com hot reload
 if (!globalThis.__vscCleanupStarted) {
   globalThis.__vscCleanupStarted = true
+  cleanupOrphanedTmpFiles()
   cleanupOldJobs()
-  setInterval(cleanupOldJobs, 60 * 60 * 1000)
+  setInterval(cleanupOldJobs, 15 * 60 * 1000)
 }

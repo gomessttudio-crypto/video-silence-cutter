@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import fs from 'fs'
 import { getJob, updateJob } from '@/lib/job-store'
 import { invertSegments, applyJumpCuts } from '@/lib/ffmpeg'
 import type { SilenceSegment } from '@/lib/types'
@@ -50,6 +51,9 @@ async function runCut(jobId: string, silences: SilenceSegment[]): Promise<void> 
       const mapped = Math.round(percent * 0.95)
       updateJob(jobId, { progress: Math.min(mapped, 95) })
     })
+
+    // Libera o input imediatamente — não é mais necessário após o corte
+    try { fs.unlinkSync(job.inputPath) } catch {}
 
     updateJob(jobId, { status: 'done', progress: 100, silences })
   } catch (err) {

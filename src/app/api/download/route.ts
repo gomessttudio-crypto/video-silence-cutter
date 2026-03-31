@@ -40,19 +40,31 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const contentType = format === 'mov' ? 'video/quicktime' : 'video/mp4'
   const filename = `output.${format}`
+  const stat = fs.statSync(job.outputPath)
 
-  const fileBuffer = fs.readFileSync(job.outputPath)
+  // Streaming para não carregar o arquivo inteiro em RAM
+  let cleaned = false
+  const cleanup = () => {
+    if (cleaned) return; cleaned = true
+    try { fs.unlinkSync(job.outputPath) } catch {}
+    deleteJob(jobId)
+  }
 
-  // Cleanup após leitura
-  try { fs.unlinkSync(job.inputPath) } catch {}
-  try { fs.unlinkSync(job.outputPath) } catch {}
-  deleteJob(jobId)
+  const fileStream = fs.createReadStream(job.outputPath)
+  const webStream = new ReadableStream({
+    start(controller) {
+      fileStream.on('data', (chunk) => controller.enqueue(new Uint8Array(chunk as Buffer)))
+      fileStream.on('end', () => { controller.close(); cleanup() })
+      fileStream.on('error', (err) => { controller.error(err); cleanup() })
+    },
+    cancel() { fileStream.destroy(); cleanup() },
+  })
 
-  return new Response(fileBuffer, {
+  return new Response(webStream, {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
-      'Content-Length': String(fileBuffer.length),
+      'Content-Length': String(stat.size),
     },
   })
 }
